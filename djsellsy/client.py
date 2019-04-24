@@ -392,7 +392,18 @@ class SellsyClient:
 
         return product_data
 
-    def create_product(self, product_data, product_type=constants.PRODUCT_TYPE_ITEM):
+    def create_product(self, name, description, price,
+                       extra_fields=None, custom_fields=None,
+                       product_type=constants.PRODUCT_TYPE_ITEM):
+
+        product_data = {
+            'name': name,
+            'notes': description,
+            'unitAmount': price,
+        }
+        if extra_fields:
+            product_data.update(extra_fields)
+
         product_data = self._prepare_product_data(product_data)
 
         new_product_data = self._client.api(
@@ -402,11 +413,12 @@ class SellsyClient:
                 product_type: product_data,
             }
         )
+        print(new_product_data)
         new_product_id = new_product_data['%s_id' % product_type]
 
-        # ... and now fill in the new client's custom fields, if any.
-        if 'custom' in product_data:
-            self.record_property_values(product_type, new_client_id, product_data['custom'])
+        # ... and now fill in the new product's custom fields, if any.
+        if custom_fields:
+            self.record_property_values(product_type, new_product_id, custom_fields)
 
         return new_product_id
 
