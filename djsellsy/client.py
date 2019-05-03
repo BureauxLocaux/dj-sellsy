@@ -71,6 +71,11 @@ class SellsyClient:
             params={'search': search_params.get('search_params')},
         )
 
+    def _get_one(self, search_params):
+        return self._client.api(
+            method='%s.getOne' % (search_params.get('search_type')),
+            params=search_params.get('search_params'),
+        )
 
     # Currency-related methods
 
@@ -325,6 +330,37 @@ class SellsyClient:
         except IndexError:
             return None
 
+    def update_property_group(self, code, label, group_id=None, props=None):
+        """
+        Update a property group on sellsy.
+
+        Cf: https://api.sellsy.fr/documentation/methodes#customfieldsgroupupdate
+
+        Parameters
+        ----------
+        code: str
+            The code of the group on sellsy.
+        label: str
+        group_id: int (optional)
+            The id of the group on sellsy. Could be `None` if `code` is given.
+        props: list
+        """
+        if not group_id and not code:
+            raise ValueError("At least group_id or code must been given.")
+
+        if not group_id:
+            group_id = self._get_property_group_id(code, force_fetch=True)
+
+        params = {
+            'id': group_id,
+            'code': code,
+            'name': label,
+        }
+        if props:
+            params['customFields'] = self._prepare_group_prop_specs(props)
+
+        return self._client.api(method='CustomFields.updateGroup', params=params)
+
     def create_property_group(self, code, label, props):
         """
 
@@ -449,6 +485,10 @@ class SellsyClient:
             product_id = product_data['id']
             self.delete_product(product_id)
 
+    def get_all_products(self, product_type=constants.PRODUCT_TYPE_ITEM):
+        all_products_data = self._get_products_raw_data(product_type=product_type)
+        return [all_products_data[key] for key in all_products_data]
+
     # Client-related methods
 
     def _get_clients_raw_data(self, force_fetch=False):
@@ -486,14 +526,72 @@ class SellsyClient:
 
         return new_client_id
 
+    # TODO: This is sharing a lot of code with _create_client.
+    def _update_client(self, client_type, client_id, client_data):
+
+        # We build the parameters to update the client...
+        params = {
+            'clientid': client_id,
+            'third': client_data.get('third'),
+        }
+        params['third']['type'] = client_type
+
+        if 'contact' in client_data:
+            params.update({'contact': client_data.get('contact')})
+        if 'address' in client_data:
+            params.update({'address': client_data.get('address')})
+
+        # ... update it in Sellsy ...
+        response_data = self._client.api(
+            method='Client.update',
+            params=params
+        )
+        # FIXME: Should we handle the response?
+        logger.debug(response_data)
+
+        # ... and now fill in the new client's custom fields, if any.
+        if 'custom' in client_data:
+            third_type = 'client' if client_type == constants.CLIENT_TYPE_CORPORATION else 'people'
+            self.record_property_values(third_type, client_id, client_data['custom'])
+
+        return client_id
+
+    # FIXME: Maybe it should be renamed `create_client`
     def create_company(self, company_data):
         return self._create_client(constants.CLIENT_TYPE_CORPORATION, company_data)
+
+    def update_company(self, company_id, company_data):
+        return self._update_client(
+            client_type=constants.CLIENT_TYPE_CORPORATION,
+            client_id=company_id,
+            client_data=company_data,
+        )
 
     def create_contact(self, contact_data):
         return self._create_client(constants.CLIENT_TYPE_PERSON, contact_data)
 
     def get_client_by_id(self, client_id):
-        pass
+        """
+        Get a client by its id.
+
+        If no client is matching with the given `client_id`, `None` will be returned.
+        """
+        try:
+            return self._get_one({
+                'search_type': constants.SEARCH_TYPE_CLIENTS,
+                'search_params': {
+                    'clientid': client_id,
+                }
+            })
+        except SellsyError as e:
+            logger.error(
+                "Cannot find a client on sellsy with the given client id.",
+                extra={
+                    'client_id': client_id,
+                    'exception': e,
+                },
+            )
+            return None
 
     def search_clients_by_name(self, name):
         return self._search({
@@ -714,6 +812,15 @@ class SellsyClient:
 
         for row_data in rows_data:
 
+            row_type = row_data.get('row_type', None)
+            if row_type and row_type != 'once':
+                # FIXME: This method dont support other row types.
+                prepared_rows.append({
+                    **row_data,
+                    'row_taxid': self._get_tax_id(row_data['tax_rate']),  # TODO: or default?
+                })
+                continue
+
             prepared_row = {
                 'row_type': 'once',
                 'row_name': row_data['title'],
@@ -740,7 +847,6 @@ class SellsyClient:
             prepared_rows.append({'row_type': 'sum'})
 
         return prepared_rows
-
 
     def _create_document(self, document_type, document_data):
         try:
@@ -785,6 +891,14 @@ class SellsyClient:
         if 'tags' in document_data:
             document_params.update({
                 'tags': document_data['tags'],
+            })
+        # FIXME: Document this? Add an explicit parameter to the method?
+        if 'payment_modes' in document_data:
+            payment_modes = document_data['payment_modes']
+            document_params.update({
+                'payMediums': [
+                    self._get_payment_mode_id(payment_mode) for payment_mode in payment_modes
+                ],
             })
 
         paydate_params = None
