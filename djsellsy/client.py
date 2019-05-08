@@ -120,7 +120,10 @@ class SellsyClient:
                 [
                     payment_mode['id']
                     for key, payment_mode in payment_modes_data.items()
-                    if payment_mode['syscode'] == payment_mode_code
+                    if (
+                        payment_mode['syscode'] == payment_mode_code
+                        or payment_mode['value'] == payment_mode_code
+                    )
                 ][0]
             )
         except IndexError:
@@ -413,7 +416,7 @@ class SellsyClient:
                 product_type: product_data,
             }
         )
-        print(new_product_data)
+        # print(new_product_data)
         new_product_id = new_product_data['%s_id' % product_type]
 
         # ... and now fill in the new product's custom fields, if any.
@@ -792,6 +795,9 @@ class SellsyClient:
                 'paydate': paydate_params,
             })
 
+        # pp = pprint.PrettyPrinter(indent=4)
+        # pp.pprint(params)
+
         new_document_data = self._client.api(
             method='Document.create',
             params=params,
@@ -800,7 +806,7 @@ class SellsyClient:
 
         return new_document_id, self.get_document_by_id(document_type, new_document_id)
 
-    def create_credit_note(self, credit_note_data):
+    def create_creditnote(self, credit_note_data):
         return self._create_document(constants.DOCUMENT_TYPE_CREDIT_NOTE, credit_note_data)
 
     def create_proforma(self, proforma_data):
@@ -894,7 +900,7 @@ class SellsyClient:
 
     # Payment-related methods
 
-    def create_payment(self, payment_data):
+    def create_payment(self, payment_data, document_type=constants.DOCUMENT_TYPE_INVOICE):
 
         params = {
             'date': payment_data['date'],  # TODO: maybe do the timestamp conversion here
@@ -918,7 +924,7 @@ class SellsyClient:
             # This payment is related to an invoice.
             method = 'Document.createPayment'
             params.update({
-                'doctype': constants.DOCUMENT_TYPE_INVOICE,
+                'doctype': document_type,
                 'docid': invoice_id,
             })
             params = {'payment': params}
@@ -954,6 +960,9 @@ class SellsyClient:
                 # TODO?
 
             })
+
+        # pp = pprint.PrettyPrinter(indent=4)
+        # pp.pprint(params)
 
         new_payment_data = self._client.api(method=method, params=params)
         new_payment_id = new_payment_data.get('payid')
