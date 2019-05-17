@@ -894,19 +894,36 @@ class SellsyClient:
             params=params,
         )
 
-    def update_invoice_status(self, invoice_id, new_status):
-        if new_status not in constants.VALID_INVOICE_STATUSES:
-            raise ValueError("'%s' is not a valid invoice status." % new_status)
+    def _update_document_status(self, document_type, document_id, new_status):
+        if new_status not in constants.VALID_DOCUMENT_STATUSES:
+            raise ValueError("'%s' is not a valid %s status." % (
+                new_status, document_type
+            ))
 
         return self._client.api(
             method='Document.updateStep',
             params={
-                'docid': invoice_id,
+                'docid': document_id,
                 'document': {
-                    'doctype': DOCUMENT_TYPE_INVOICE,
+                    'doctype': document_type,
                     'step': new_status,
                 }
             }
+        )
+
+    def update_creditnote_status(self, creditnote_id, new_status):
+        return self._update_document_status(
+            constants.DOCUMENT_TYPE_CREDIT_NOTE, creditnote_id, new_status
+        )
+
+    def update_proforma_status(self, proforma_id, new_status):
+        return self._update_document_status(
+            constants.DOCUMENT_TYPE_PROFORMA, proforma_id, new_status
+        )
+
+    def update_invoice_status(self, invoice_id, new_status):
+        return self._update_document_status(
+            constants.DOCUMENT_TYPE_INVOICE, invoice_id, new_status
         )
 
 
