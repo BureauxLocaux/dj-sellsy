@@ -769,6 +769,14 @@ class SellsyClient:
             document_params.update({
                 'displayedDate': int(document_data['date'])
             })
+        if 'title' in document_data:
+            document_params.update({
+                'subject': document_data['subject']
+            })
+        if 'notes' in document_data:
+            document_params.update({
+                'notes': document_data['notes']
+            })
         if 'discount' in document_data:
             document_params.update({
                 'globalDiscount': document_data['discount'],
@@ -803,6 +811,10 @@ class SellsyClient:
             params=params,
         )
         new_document_id = new_document_data.get('doc_id')
+
+        # ... and now fill in the new document's custom fields, if any.
+        if 'custom' in document_data:
+            self.record_property_values('document', new_document_id, document_data['custom'])
 
         return new_document_id, self.get_document_by_id(document_type, new_document_id)
 
@@ -951,7 +963,7 @@ class SellsyClient:
             {{mediumid}}    Oui                             int                         Aucun   Identifiant du moyen de paiement associé au paiement
             {{inBank}}      Non                             enum('Y', 'N')              N       Spécifie si le paiement a été remis en banque
             {{bankId}}      Non, sauf si {{inBank}} = Y     int                         Aucun   Identifiant du compte bancaire associé à la remise en banque
-            {{bankDate}}    Non, sauf si {{inBank}} = Y     int (timestamp)             Aucun   Date de la remise en banqu
+            {{bankDate}}    Non, sauf si {{inBank}} = Y     int (timestamp)             Aucun   Date de la remise en banque
 
             """
             method = 'Payments.create'
