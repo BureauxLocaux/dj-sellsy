@@ -270,6 +270,8 @@ class SellsyClient:
         ]
 
     def record_property_values(self, linked_type, linked_id, prop_values):
+        print(linked_type)
+        print(linked_id)
         return self._client.api(
             method='CustomFields.recordValues',
             params={
@@ -579,16 +581,16 @@ class SellsyClient:
         contact_data: dict
             Same dict as for `create_contact`.
         """
-
-        # Create the new contact and associate it to the client.
-        new_contact_id = self._client.api(
-            method='Client.addContact',
+        new_contact_id = int(self._client.api(
+            method='Peoples.create',
             params={
-                'clientid': company_id,
-                # FIXME: Document this.
-                'contact': contact_data['contact'],
+                'people': {
+                    # FIXME: Document this.
+                    **contact_data['contact'],
+                    'thirdids': [company_id],
+                },
             }
-        )['contact_id']
+        )['id'])
 
         # Register its custom properties.
         if 'custom' in contact_data:
@@ -657,6 +659,19 @@ class SellsyClient:
     def search_clients_by_property(self, prop_name, prop_value):
        return self._search({
             'search_type': constants.SEARCH_TYPE_CLIENTS,
+            'search_params': {
+                'customfields': [
+                    {
+                        'cfid': self._get_property_id(prop_name),
+                        'value': self._prepare_search_prop_value(prop_value),
+                    },
+                ]
+            }
+        })['result']
+
+    def search_contact_by_property(self, prop_name, prop_value):
+        return self._search({
+            'search_type': constants.SEARCH_TYPE_PEOPLES,
             'search_params': {
                 'customfields': [
                     {
