@@ -579,13 +579,33 @@ class SellsyClient:
         contact_data: dict
             Same dict as for `create_contact`.
         """
-        return self._client.api(
+
+        # Create the new contact and associate it to the client.
+        new_contact_id = self._client.api(
             method='Client.addContact',
             params={
                 'clientid': company_id,
-                'contact': contact_data,
+                # FIXME: Document this.
+                'contact': contact_data['contact'],
             }
         )
+
+        # Register its custom properties.
+        if 'custom' in contact_data:
+            third_type = 'people'
+            self.record_property_values(third_type, new_contact_id, contact_data['custom'])
+
+        if 'address' in contact_data:
+            self._client.api(
+                method='Addresses.create',
+                params={
+                    'linkedtype': 'people',
+                    'linkedid': new_contact_id,
+                    **contact_data.get('address'),
+                }
+            )
+
+        return new_contact_id
 
     def create_contact(self, contact_data):
         return self._create_client(constants.CLIENT_TYPE_PERSON, contact_data)
