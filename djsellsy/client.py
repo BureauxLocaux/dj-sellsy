@@ -567,6 +567,26 @@ class SellsyClient:
             client_data=company_data,
         )
 
+    def create_company_contact(self, company_id, contact_data):
+        """
+        Create a contact and associate it to the client with the given company_id.
+
+        Cf: https://api.sellsy.fr/documentation/methodes#clientsaddcontact
+
+        Parameters
+        ----------
+        company_id
+        contact_data: dict
+            Same dict as for `create_contact`.
+        """
+        return self._client.api(
+            method='Client.addContact',
+            params={
+                'clientid': company_id,
+                'contact': contact_data,
+            }
+        )
+
     def create_contact(self, contact_data):
         return self._create_client(constants.CLIENT_TYPE_PERSON, contact_data)
 
