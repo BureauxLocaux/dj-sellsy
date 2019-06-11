@@ -589,6 +589,8 @@ class SellsyClient:
                 'contact': contact_data['contact'],
             }
         )
+        print('------------')
+        print(new_contact_id)
 
         # Register its custom properties.
         if 'custom' in contact_data:
