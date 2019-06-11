@@ -270,8 +270,6 @@ class SellsyClient:
         ]
 
     def record_property_values(self, linked_type, linked_id, prop_values):
-        print(linked_type)
-        print(linked_id)
         return self._client.api(
             method='CustomFields.recordValues',
             params={
