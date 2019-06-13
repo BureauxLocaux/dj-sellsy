@@ -16,17 +16,14 @@ class SellsySyncable(models.Model):
 
     sellsy_id = models.IntegerField(
         _("Sellsy ID"),
-        blank=True,
-        null=True,
+        blank=True, null=True, unique=True,
         help_text=_("The unique identifier of this object in Sellsy"),
     )
 
     sellsy_last_synced_at = models.DateTimeField(
         _("Sellsy last synced at"),
-        blank=True,
-        null=True,
-        editable=False,
-        help_text=_("When the model has been synced with sellsy for the last time."),
+        blank=True, null=True, editable=False,
+        help_text=_("When the model has been synced with Sellsy for the last time"),
     )
 
     class Meta:
