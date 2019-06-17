@@ -860,6 +860,40 @@ class SellsyClient:
             }
         )
 
+    def search_documents(self, document_type, client_id=None, date=None, status=None, tags=None):
+        search_params = {}
+
+        if client_id:
+            search_params.update({
+                'thirds': [client_id]
+            })
+
+        if date:
+            date_ts = int(date.timestamp())
+            search_params.update({
+                'periodecreated_start': date_ts,
+                'periodecreated_end': date_ts,
+            })
+
+        if status:
+            search_params.update({
+                'steps': [status]
+            })
+
+        if tags:
+            search_params.update({
+                'tags': tags
+            })
+
+        return self._client.api(
+            method='document.getList',
+            params={
+                'doctype': document_type,
+                'search': search_params,
+                'pagination': constants.PAGINATION_ALL,
+            }
+        )
+
     def _prepare_document_rows(self, rows_data, append_sum_row=True):
         prepared_rows = []
 
