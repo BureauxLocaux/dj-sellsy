@@ -930,7 +930,7 @@ class SellsyClient:
             })
         if 'title' in document_data:
             document_params.update({
-                'subject': document_data['subject']
+                'subject': document_data['title']
             })
         if 'notes' in document_data:
             document_params.update({
