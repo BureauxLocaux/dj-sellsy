@@ -1073,13 +1073,13 @@ class SellsyClient:
         invoice_data = {
             'client_id': proforma.get('thirdid'),
             'parent_id': proforma_id,
-            'date': datetime.datetime.strptime(proforma.get('displayedDate'), '%d/%m/%Y').timestamp(),
+            'date': int(datetime.datetime.strptime(proforma.get('displayedDate'), '%d/%m/%Y').timestamp()),
             'tags': ','.join([tag_spec['word'] for tag_id, tag_spec in proforma.get('tags').items()]),
             'rows': invoice_rows,
             'discount': proforma.get('globalDiscount'),
             'discount_unit': proforma.get('globalDiscountUnit'),
 
-            # TODO: more info? at least the payment date(s)...
+            # TODO: more info -- at least title, payment mode(s), payment date(s), ...
         }
         return self.create_invoice(invoice_data)
 
