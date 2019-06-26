@@ -18,4 +18,9 @@ setuptools.setup(
         "Environment :: Web Environment",
         "Framework :: Django",
     ],
+    install_requires=[
+        'phpserialize',
+        'sellsy_api',
+    ],
+
 )

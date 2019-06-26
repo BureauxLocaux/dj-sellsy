@@ -6,10 +6,12 @@ import time
 from django.conf import settings
 from django.utils.translation import ugettext as _
 
+import phpserialize
 import sellsy_api
 from sellsy_api.errors.sellsy_exceptions import SellsyError
 
 from . import constants
+from .utils import date_str_to_ts
 
 logger = logging.getLogger('vendors.dj_sellsy')
 
@@ -126,8 +128,9 @@ class SellsyClient:
                     payment_mode['id']
                     for key, payment_mode in payment_modes_data.items()
                     if (
-                        payment_mode['syscode'] == payment_mode_code
+                        payment_mode['id'] == payment_mode_code
                         or payment_mode['value'] == payment_mode_code
+                        or payment_mode['syscode'] == payment_mode_code
                     )
                 ][0]
             )
@@ -165,7 +168,10 @@ class SellsyClient:
                 [
                     payment_date['id']
                     for key, payment_date in payment_dates_data.items()
-                    if payment_date['syscode'] == payment_date_code
+                    if (
+                        payment_date['id'] == payment_date_code
+                        or payment_date['syscode'] == payment_date_code
+                    )
                 ][0]
             )
         except IndexError:
@@ -979,7 +985,8 @@ class SellsyClient:
             document_params.update({
                 'tags': document_data['tags'],
             })
-        # FIXME: Document this? Add an explicit parameter to the method?
+
+        # TODO: Document this? Add an explicit parameter to the method?
         if 'payment_modes' in document_data:
             payment_modes = document_data['payment_modes']
             document_params.update({
@@ -988,6 +995,7 @@ class SellsyClient:
                 ],
             })
 
+        # TODO: This could be wrapped in a more user-friendly way...
         paydate_params = None
         if 'paydate' in document_data:
             paydate_params = document_data['paydate']
@@ -1031,7 +1039,6 @@ class SellsyClient:
     def create_invoice_from_proforma(self, proforma_id):
         proforma = self.get_document_by_id(constants.DOCUMENT_TYPE_PROFORMA, proforma_id)
         proforma_rows = proforma.get('map').get('rows')
-
         invoice_rows = []
 
         for proforma_row_id, proforma_row in proforma_rows.items():
@@ -1070,17 +1077,67 @@ class SellsyClient:
 
             invoice_rows.append(invoice_row)
 
+        invoice_date = proforma.get('displayedDate')
+        invoice_date_ts = date_str_to_ts(invoice_date, '%d/%m/%Y')
+
+        invoice_tags = ','.join([
+            tag_spec['word'] for tag_id, tag_spec in proforma.get('tags', {}).items()
+        ])
+
         invoice_data = {
             'client_id': proforma.get('thirdid'),
             'parent_id': proforma_id,
-            'date': int(datetime.datetime.strptime(proforma.get('displayedDate'), '%d/%m/%Y').timestamp()),
-            'tags': ','.join([tag_spec['word'] for tag_id, tag_spec in proforma.get('tags').items()]),
+            'date': invoice_date_ts,
+            'title': proforma.get('subject', ''),
             'rows': invoice_rows,
             'discount': proforma.get('globalDiscount'),
             'discount_unit': proforma.get('globalDiscountUnit'),
-
-            # TODO: more info -- at least title, payment mode(s), payment date(s), ...
+            'tags': invoice_tags,
         }
+
+        # Add the payment date from the proforma.
+        payment_date = None
+
+        paydate_id = proforma.get('paydate', None)
+        is_custom_paydate = paydate_id == self._get_payment_date_id('custom')
+        if is_custom_paydate:
+            payment_date_str = proforma.get('paydate_custom')
+            payment_date_ts = date_str_to_ts(payment_date_str, '%d/%m/%Y')
+            payment_date = {
+                'id': 'custom',
+                'custom': payment_date_ts,
+            }
+            # TODO: Handle the other payment dates?
+
+        if payment_date:
+            invoice_data.update({'paydate': payment_date})
+
+        # Add the payment mode(s) from the proforma.
+        payment_modes = None
+        try:
+            serialized_payment_modes = proforma['prefs']['payMediums']
+
+            # We get something like `'a:1:{i:0;i:3010342;}'`.
+            # This is a PHP-serialized value, which we can fortunately
+            # deserialize thanks to the `phpserialize` library.
+
+        except KeyError:
+            pass
+
+        else:
+            deserialized_payment_modes = phpserialize.loads(
+                serialized_payment_modes.encode('utf-8')
+            )
+
+            # We now have something like `{0: 3010342}`.
+            # What we need to pass to `create_invoice` is a list of payment mode IDs,
+            # so the `values()` of this `dict` should almost be fine. Just need strings.
+
+            payment_modes = [str(pmid) for pmid in deserialized_payment_modes.values()]
+
+        if payment_modes:
+            invoice_data.update({'payment_modes': payment_modes})
+
         return self.create_invoice(invoice_data)
 
     def validate_invoice(self, invoice_id, invoice_ts=None):
