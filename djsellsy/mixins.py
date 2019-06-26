@@ -14,7 +14,7 @@ class SellsySyncableManager(models.Manager):
 
 class SellsySyncable(models.Model):
 
-    sellsy_id = models.IntegerField(
+    sellsy_id = models.BigIntegerField(
         _("Sellsy ID"),
         blank=True, null=True, unique=True,
         help_text=_("The unique identifier of this object in Sellsy"),
