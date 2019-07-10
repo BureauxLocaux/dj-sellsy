@@ -1,6 +1,4 @@
-import datetime
 import logging
-import pprint
 import time
 
 from django.conf import settings
@@ -52,16 +50,45 @@ class SellsyClient:
     _contacts_raw_data = None
     _products_raw_data = None
 
-    def __init__(self, deferred_connection=False, **kwargs):
+    def __init__(
+        self,
+        deferred_connection=False,
+        consumer_token=None,
+        consumer_secret=None,
+        user_token=None,
+        user_secret=None,
+    ):
+        """
+        Instantiate the Sellsy client and connect it to Sellsy.
+        By default, the credentials defined in the settings are used.
+
+        Parameters
+        ----------
+        deferred_connection, optional default: False
+            Define if the client should be connected to sellsy directly
+        consumer_token: str, optional
+            Would be used over `SELLSY_CONSUMER_TOKEN`
+        consumer_secret: str, optional
+            Would be used over `SELLSY_CONSUMER_SECRET`
+        user_token: str, optional
+            Would be used over `SELLSY_USER_TOKEN`
+        user_token: str, optional
+            Would be used over `SELLSY_USER_SECRET`
+        """
+        self.consumer_token = consumer_token or settings.SELLSY_CONSUMER_TOKEN
+        self.consumer_secret = consumer_secret or settings.SELLSY_CONSUMER_SECRET
+        self.user_token = user_token or settings.SELLSY_USER_TOKEN
+        self.user_secret = user_secret or settings.SELLSY_USER_SECRET
+
         if not deferred_connection:
             self.connect()
 
     def connect(self):
         self._client = sellsy_api.Client(
-            settings.SELLSY_CONSUMER_TOKEN,
-            settings.SELLSY_CONSUMER_SECRET,
-            settings.SELLSY_USER_TOKEN,
-            settings.SELLSY_USER_SECRET,
+            consumer_token=self.consumer_token,
+            consumer_secret=self.consumer_secret,
+            user_token=self.user_token,
+            user_secret=self.user_secret,
         )
 
     def wait(self, delay=None):
