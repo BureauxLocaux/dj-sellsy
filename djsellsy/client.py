@@ -174,7 +174,7 @@ class SellsyClient:
             )['payDates']
         return self._payment_dates_raw_data
 
-    def _get_payment_date_id(self, payment_date_code, force_fetch=False):
+    def _get_payment_date_ids(self, payment_date_code, force_fetch=False):
         """
         Legal values for `payment_date_code` are:
 
@@ -190,20 +190,19 @@ class SellsyClient:
 
         """
         payment_dates_data = self._get_payment_dates_raw_data(force_fetch)
-        try:
-            return int(
-                [
-                    payment_date['id']
-                    for key, payment_date in payment_dates_data.items()
-                    if (
-                        payment_date['id'] == payment_date_code
-                        or payment_date['syscode'] == payment_date_code
-                    )
-                ][0]
+        return [
+            payment_date['id']
+            for key, payment_date in payment_dates_data.items()
+            if (
+                payment_date['id'] == payment_date_code
+                or payment_date['syscode'] == payment_date_code
             )
-        except IndexError:
-            return None
+        ]
 
+    def _is_custom_paydate(self, paydate_id):
+        # Only custom ``payment_date`` types allow us to set the invoice due date we need.
+        # For "normal" types, Sellsy will calculate it automatically to a date we don't want.
+        return paydate_id in self._get_payment_date_ids('custom')
 
     # Properties-related methods
 
@@ -1049,21 +1048,15 @@ class SellsyClient:
                 ],
             })
 
-        # TODO: This could be wrapped in a more user-friendly way...
-        paydate_params = None
-        if 'paydate' in document_data:
-            paydate_params = document_data['paydate']
-
         row_params = self._prepare_document_rows(rows_data)
 
         params = {
             'document': document_params,
             'row':row_params,
         }
-        if paydate_params is not None:
-            paydate_params['id'] = self._get_payment_date_id(paydate_params['id'])
+        if 'paydate' in document_data:
             params.update({
-                'paydate': paydate_params,
+                'paydate': document_data['paydate'],
             })
 
         # pp = pprint.PrettyPrinter(indent=4)
@@ -1153,12 +1146,11 @@ class SellsyClient:
         payment_date = None
 
         paydate_id = proforma.get('paydate', None)
-        is_custom_paydate = paydate_id == self._get_payment_date_id('custom')
-        if is_custom_paydate:
+        if self._is_custom_paydate(paydate_id):
             payment_date_str = proforma.get('paydate_custom')
             payment_date_ts = date_str_to_ts(payment_date_str, '%d/%m/%Y')
             payment_date = {
-                'id': 'custom',
+                'id': paydate_id,
                 'custom': payment_date_ts,
             }
             # TODO: Handle the other payment dates?
