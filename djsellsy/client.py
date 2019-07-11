@@ -893,8 +893,30 @@ class SellsyClient:
             }
         )
 
-    def search_documents(self, document_type, client_id=None, date=None, status=None, tags=None):
+    def search_documents(
+        self, document_type, client_id=None, date=None, date_range=None, status=None, tags=None,
+    ):
+        """Search documents.
+
+        Parameters
+        ----------
+        document_type : str
+            The type of document to search. For instance: ``'proforma'``
+        client_id : int, optional
+            The id of the client is sellsy.
+        date : datetime, optional
+            Filter documents by the given date.
+        date_range : (datetime,datetime), optional
+            Filter documents by the date range. It should be (first_date,last_date).
+        status : str, optional
+            The status of the document. For instance: ``'accepted'``.
+        tags :
+            Filter by tags.
+        """
         search_params = {}
+
+        if date and date_range:
+            raise ValueError('Cannot have both a date and a date_range filter.')
 
         if client_id:
             search_params.update({
@@ -906,6 +928,11 @@ class SellsyClient:
             search_params.update({
                 'periodecreated_start': date_ts,
                 'periodecreated_end': date_ts,
+            })
+        elif date_range:
+            search_params.update({
+                'periodecreated_start': int(date_range[0].timestamp()),
+                'periodecreated_end': int(date_range[1].timestamp()),
             })
 
         if status:
