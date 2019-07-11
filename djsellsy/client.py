@@ -1087,7 +1087,7 @@ class SellsyClient:
             row_tax_rate = float(proforma_row.get('taxrate'))
             row_discount = float(proforma_row.get('discount'))
             if row_discount:
-                row_discount_unit = int(float(proforma_row.get('discountUnit')))
+                row_discount_unit = proforma_row.get('discountUnit')
 
             invoice_row = {
                 'title': row_title,
