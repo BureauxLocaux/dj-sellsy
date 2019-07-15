@@ -14,12 +14,21 @@ class SellsyApiObject:
 
     _client = None
 
-    def __init__(self, sellsy_id, fetch=True):
+    def __init__(self, sellsy_id, fetch=True, sellsy_client=None):
         """
         Init the APIObject. If `fetch` is `True`, a call to the Sellsy API will automatically
         be performed in order to fetch the object info.
+
+        Parameters
+        ----------
+        sellsy_id: str
+            The identifier of the resource on sellsy.
+        fetch: bool, default: `True`
+        sellsy_client: SellsyClient, optional
+            Could be used to connect to sellsy when using credentials which are different than the
+            one defined in the settings.
         """
-        self._client = SellsyClient()
+        self._client = sellsy_client or SellsyClient()
 
         self.sellsy_id = sellsy_id
         if fetch:
@@ -50,7 +59,7 @@ class Client(SellsyApiObject):
         return self._client.get_client_by_id(self.sellsy_id)
 
     @classmethod
-    def create(cls, data, fetch=True):
+    def create(cls, data, fetch=True, sellsy_client=None):
         """
         Create a new client on sellsy.
 
@@ -61,13 +70,16 @@ class Client(SellsyApiObject):
         data: dict
         fetch: bool, default: `True`
             If `True`, fetch the api in order to return a synchronized Client api object instance.
+        sellsy_client: SellsyClient, optional
+            Could be used to connect to sellsy when using credentials which are different than the
+            one defined in the settings.
         """
         logger.info(
             f"Creating Sellsy API object of type '{cls.__class__}' "
             f"from data: {pprint.pformat(data, indent=4)} ..."
         )
-        sellsy_client = SellsyClient()
+        sellsy_client = sellsy_client or SellsyClient()
         # FIXME: Error handling.
         sellsy_id = sellsy_client.create_company(data)
 
-        return cls(sellsy_id=sellsy_id, fetch=fetch)
+        return cls(sellsy_id=sellsy_id, fetch=fetch, sellsy_client=sellsy_client)
