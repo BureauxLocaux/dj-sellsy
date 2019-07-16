@@ -1127,8 +1127,12 @@ class SellsyClient:
         invoice_date = proforma.get('displayedDate')
         invoice_date_ts = date_str_to_ts(invoice_date, '%d/%m/%Y')
 
+        tags = proforma.get('tags', {})
+        # Because of how sellsy works, if a proforma has no tag, we will get a list not an empty dict.
+        if isinstance(tags, list):
+            tags = {}
         invoice_tags = ','.join([
-            tag_spec['word'] for tag_id, tag_spec in proforma.get('tags', {}).items()
+            tag_spec['word'] for tag_id, tag_spec in tags.items()
         ])
 
         invoice_data = {
