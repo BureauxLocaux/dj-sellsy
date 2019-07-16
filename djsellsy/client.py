@@ -564,7 +564,7 @@ class SellsyClient:
         # We build the parameters to update the client...
         params = {
             'clientid': client_id,
-            'third': client_data.get('third'),
+            'third': client_data.get('third', {}),
         }
         params['third']['type'] = client_type
 
