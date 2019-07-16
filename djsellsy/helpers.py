@@ -23,7 +23,7 @@ class SellsyApiObject:
 
         self.sellsy_id = sellsy_id
         if fetch:
-            self._fetch_api_object()
+            self.fetch()
 
     def fetch(self):
         """Fetch the api object content and put it into `api_object_content`."""
