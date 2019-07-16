@@ -1182,8 +1182,11 @@ class SellsyClient:
             # We now have something like `{0: 3010342}`.
             # What we need to pass to `create_invoice` is a list of payment mode IDs,
             # so the `values()` of this `dict` should almost be fine. Just need strings.
-
-            payment_modes = [str(pmid) for pmid in deserialized_payment_modes.values()]
+            payment_modes = []
+            for mode in deserialized_payment_modes.values():
+                if isinstance(mode, bytes):
+                    mode = mode.decode('utf-8')
+                payment_modes.append(str(mode))
 
         if payment_modes:
             invoice_data.update({'payment_modes': payment_modes})
